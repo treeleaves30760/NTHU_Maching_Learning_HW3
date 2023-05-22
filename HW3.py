@@ -121,8 +121,8 @@ def main():
     mse_mlr = mse(y_test, y_pred_mlr)
     mse_blr = mse(y_test, y_pred_blr)
 
-    print(f'MSE for MLR: {mse_mlr}')
-    print(f'MSE for BLR: {mse_blr}')
+    print(f'Mean Squared Error of MLR: {mse_mlr}')
+    print(f'Mean Squared Error of BLR: {mse_blr}')
 
     # Find the optimal model
     min_mse, best_model_name = find_optimal_regression_model(X_train, X_test, y_train, y_test)
