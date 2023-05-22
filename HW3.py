@@ -1,7 +1,18 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, ElasticNet
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.svm import SVR
+from sklearn.metrics import mean_squared_error
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from matplotlib.gridspec import GridSpec
+from typing import Any, Tuple
 
 def split_data(data, train_frac=0.7, valid_frac=0.1, test_frac=0.2):
     train_data, temp = train_test_split(data, test_size=1-train_frac)
@@ -21,22 +32,42 @@ def BLR(X, y, alpha=1, beta=1):
     return m, S
 
 def predict(X, w):
-    X = np.column_stack((np.ones(len(X)), X)) # add bias term
+    X = np.column_stack((np.ones(X.shape[0]), X)) # add bias term
     return X @ w
 
 def mse(y_true, y_pred):
     return np.mean((y_true - y_pred)**2)
 
-def question_4(X_train, y_train, X_test, y_test):
-    from sklearn.ensemble import RandomForestRegressor
+def find_optimal_regression_model(X_train, X_test, y_train, y_test,
+):
+    models = {
+        'Linear Regression': LinearRegression(),
+        'Degree-2 Polynomial Regression': make_pipeline(
+            PolynomialFeatures(2), LinearRegression()),
+        'Degree-3 Polynomial Regression': make_pipeline(
+            PolynomialFeatures(3), LinearRegression()),
+        'Decision Tree Regression': DecisionTreeRegressor(),
+        'Random Forest Regression': RandomForestRegressor(
+            n_estimators=100, random_state=42),
+        'Gradient Boosting Regression': GradientBoostingRegressor(
+            n_estimators=100, learning_rate=0.1, max_depth=4, random_state=0, loss='squared_error'),
+        'Neural Networks': MLPRegressor(
+            hidden_layer_sizes=(100, ), activation='relu', solver='adam', max_iter=1000),
+        'SVR': SVR(),
+        'Elastic Net': ElasticNet()
+    }
 
-    # Train RandomForestRegressor
-    rf = RandomForestRegressor(n_estimators=800, max_depth=40, verbose=2, n_jobs=5, random_state=42)
-    rf.fit(X_train, y_train)
-    y_pred_rf = rf.predict(X_test)
-    mse_rf = mse(y_test, y_pred_rf)
+    min_mse = np.Infinity
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        mse = mean_squared_error(y_test, y_pred)
+        if mse < min_mse:
+            min_mse = mse
+            best_model_name = name
+        print(f'Mean Squared Error of {name}: {mse:.6f}')
 
-    print(f'MSE for RandomForestRegressor: {mse_rf}')
+    return min_mse, best_model_name
 
 def main():
     # Load and preprocess data
@@ -48,13 +79,15 @@ def main():
     data = data.drop(columns=['User_ID'])
 
     # Convert 'Gender' to numeric
-    data['Gender'] = data['Gender'].map({'male': -1, 'female': 1})
+    data['Gender'] = data['Gender'].map({'male': 0, 'female': 1})
 
     train_data, valid_data, test_data = split_data(data)
 
     # Train models
     X_train = train_data.drop(columns=['Calories']).values
     y_train = train_data['Calories'].values
+    X_valid = valid_data.drop(columns=['Calories']).values
+    y_valid = valid_data['Calories'].values
     X_test = test_data.drop(columns=['Calories']).values
     y_test = test_data['Calories'].values
 
@@ -70,27 +103,13 @@ def main():
     print(f'MSE for MLR: {mse_mlr}')
     print(f'MSE for BLR: {mse_blr}')
 
-    question_4(X_train, y_train, X_test, y_test)
+    # Find the optimal model
+    min_mse, best_model_name = find_optimal_regression_model(X_train, X_test, y_train, y_test)
+    print(f'Best model is {best_model_name} with MSE {min_mse:.6f}')
 
-    # Plot true vs predicted values
-    plt.figure(figsize=(12, 6))
+    # Generate predictions for the validation set using the BLR model
+    y_preds_blr = predict(X_valid, w_blr)
 
-    plt.subplot(1, 2, 1)
-    plt.scatter(y_test, y_pred_mlr)
-    plt.xlabel('True Values')
-    plt.ylabel('Predicted Values')
-    plt.title('MLR Model')
-
-    plt.subplot(1, 2, 2)
-    plt.scatter(y_test, y_pred_blr)
-    plt.xlabel('True Values')
-    plt.ylabel('Predicted Values')
-    plt.title('BLR Model')
-
-    plt.tight_layout()
-    plt.show()
-
-    
 
 if __name__ == "__main__":
     main()
