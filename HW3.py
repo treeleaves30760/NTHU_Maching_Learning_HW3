@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, ElasticNet
+from sklearn.linear_model import LinearRegression, ElasticNet, Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeRegressor
@@ -38,23 +38,44 @@ def predict(X, w):
 def mse(y_true, y_pred):
     return np.mean((y_true - y_pred)**2)
 
-def find_optimal_regression_model(X_train, X_test, y_train, y_test,
-):
+def plot_results(X, y, y_pred, feature_names, model_name):
+    fig, axs = plt.subplots(2, 4, figsize=(20, 10))
+    axs = axs.ravel()
+
+    for i in range(X.shape[1]):
+        axs[i].scatter(X[:, i], y, label='Actual')
+        axs[i].scatter(X[:, i], y_pred, label='Predicted')
+
+        # Fit a line using np.polyfit and plot it
+        coef = np.polyfit(X[:, i], y_pred, 1)
+        poly1d_fn = np.poly1d(coef)
+        axs[i].plot(X[:, i], poly1d_fn(X[:, i]), color='red')
+
+        axs[i].set_xlabel(feature_names[i])
+        axs[i].set_ylabel('Calories')
+        axs[i].set_title(f'{model_name}: Calories vs {feature_names[i]}')
+        axs[i].legend()
+
+    # Remove extra subplots
+    for i in range(X.shape[1], len(axs)):
+        fig.delaxes(axs[i])
+
+    plt.tight_layout()
+    plt.show()
+
+def find_optimal_regression_model(X_train, X_test, y_train, y_test):
     models = {
-        'Linear Regression': LinearRegression(),
-        'Degree-2 Polynomial Regression': make_pipeline(
-            PolynomialFeatures(2), LinearRegression()),
-        'Degree-3 Polynomial Regression': make_pipeline(
-            PolynomialFeatures(3), LinearRegression()),
-        'Decision Tree Regression': DecisionTreeRegressor(),
-        'Random Forest Regression': RandomForestRegressor(
-            n_estimators=100, random_state=42),
-        'Gradient Boosting Regression': GradientBoostingRegressor(
-            n_estimators=100, learning_rate=0.1, max_depth=4, random_state=0, loss='squared_error'),
-        'Neural Networks': MLPRegressor(
-            hidden_layer_sizes=(100, ), activation='relu', solver='adam', max_iter=1000),
+        'Neural Networks': MLPRegressor(hidden_layer_sizes=(400, ), activation='relu', solver='adam', max_iter=1000),
         'SVR': SVR(),
-        'Elastic Net': ElasticNet()
+        'Ridge':Ridge(),
+        'Elastic Net': ElasticNet(),
+        'Linear Regression': LinearRegression(),
+        'Degree-2 Polynomial Regression': make_pipeline(PolynomialFeatures(2), LinearRegression()),
+        'Degree-3 Polynomial Regression': make_pipeline(PolynomialFeatures(3), LinearRegression()),
+        'Degree-4 Polynomial Regression': make_pipeline(PolynomialFeatures(4), LinearRegression()),
+        'Decision Tree Regression': DecisionTreeRegressor(),
+        'Random Forest Regression': RandomForestRegressor(n_estimators=400, n_jobs=5, random_state=42),
+        'Gradient Boosting Regression': GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=4, random_state=0, loss='squared_error')
     }
 
     min_mse = np.Infinity
@@ -110,6 +131,9 @@ def main():
     # Generate predictions for the validation set using the BLR model
     y_preds_blr = predict(X_valid, w_blr)
 
+    feature_names = ['Gender', 'Age', 'Height', 'Weight', 'Duration', 'Heart_Rate', 'Body_Temp']
+    plot_results(X_test, y_test, y_pred_mlr, feature_names, 'MLR')
+    plot_results(X_test, y_test, y_pred_blr, feature_names, 'BLR')
 
 if __name__ == "__main__":
     main()
